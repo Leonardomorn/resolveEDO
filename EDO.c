@@ -61,3 +61,39 @@ void imprime_EDO (Edo* edoq)
     printf("\n a condição de contorno final yb para esta EDO é: %f\n", edoq->yb);
 
 }
+
+/*****************************************************
+ * Função que gera a matriz Tri-diagonal 
+ * edoeq: equação diferencial ordinária
+ * sl : sistema linear tri-diagonal
+******************************************************/
+
+void geraTriDiagonal (Edo *edoeq, SL_Tridiag *sl)
+{
+double xi, h;
+h = (edoeq->b - edoeq->a) / (edoeq->n+1.0);
+for (int i=0; i < edoeq->n; ++i) {
+xi = edoeq->a + (i+1)*h; // ponto da malha
+sl->Di[i] = 1 - h * edoeq->p(xi)/2.0; // diagonal inferior
+sl->D[i] = -2 + h*h * edoeq->q(xi); // diagonal principal
+sl->Ds[i] = 1 + h * edoeq->p(xi)/2.0; // diagonal superior
+sl->B[i] = h*h * edoeq->r(xi); // termo independente
+}
+// Condições de contorno subtraídas do 1º e último termos independentes
+sl->B[0] -= edoeq->ya * (1 - h*edoeq->p(edoeq->a+h)/2.0);
+sl->B[edoeq->n-1] -= edoeq->yb * (1 + h*edoeq->p(edoeq->b-h)/2.0);
+}
+
+void gaussSeidel (double *D, double *Di, double *Ds,
+double *B, double *x, int n, double tol)
+{
+    double erro = 1.0 + tol;
+    while (erro > tol) {
+    // 5(n-2)+6 ≈ 5n operações / iteração
+    x[ 0 ] = (B[ 0 ] – Ds[ 0 ] * x[ 1 ]) / d[ 0 ];
+    for (int i=1; i < n-1; ++i)
+    x[ i ] = (B[ i ] – a[ i-1 ] * x[ i-1] – Ds[ i ] * x[ i+1 ]) / d[ i ];
+    x[ n-1 ] = (B[ n-1 ] – a[ n-2 ] * x[ n-2 ] ) / d[ n-1 ];
+    // Calcula erro
+    }
+}

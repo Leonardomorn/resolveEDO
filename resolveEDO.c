@@ -8,6 +8,8 @@ int main ()
     Edo* edeoq;
     int n = 5;
     inicializa_EDO(edeoq, n);
-    imprime_EDO (edeoq);
+    //imprime_EDO (edeoq);
+    
+
 
 }
