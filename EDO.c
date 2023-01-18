@@ -38,14 +38,14 @@ inline double calcula_r(double x)
 ************************************/
 void inicializa_EDO( Edo* edoq, int n)
 {
-    edoq->n = n;
+    edoq-> n = n;
     edoq->a = 0;
     edoq->b = 1;
     edoq->ya = -1;
     edoq->yb = 0;
     edoq->p = calcula_p; //p aponta para calcula_p
     edoq->q = calcula_q; //q aponta para calcula_q
-    edoq->r = calcula_r; //r aponta para calcula_r
+    edoq->r = calcula_r; //r aponta para calcula_r  
 }
 
 /**********************************
@@ -71,6 +71,23 @@ void imprime_EDO (Edo* edoq)
 
 }
 
+void imprime_SL (Edo* edoq, SL_Tridiag* sl)
+{
+    printf("A diagonal inferior é: \n");
+    for (int i = 0; i < edoq->n; i++)
+        printf("%f " ,sl->Di[i]);
+    
+    printf("\n\nA diagonal principal é: \n");
+    for (int i = 0; i < edoq->n; i++)
+        printf("%f " ,sl->D[i]);
+    
+    printf("\n\nA diagonal superior é: \n");
+    for (int i = 0; i < edoq->n; i++)
+        printf("%f " ,sl->Ds[i]);    
+    printf("\n ");    
+
+}
+
 /*!
     \brief algoritmo que soma os numeros de um vetor de modo a evitar
         muitos cancelamentos subtrativos
@@ -93,27 +110,35 @@ double somaKahan( double *dados, int tam )
 }
 
 /*!
-  \brief Essa função calcula a norma L2 das etapas do Gauss-Seidel 
+  \brief Essa função calcula a norma L2 do residuo do Gauss-Seidel 
 
   \param x Vetor solução do sistema linear
   \param xAnt Vetor solução do sistema linear da iteração anterior
   \param n Tamanho dos vetores
 */
-double norma_L2(double *x, double *xAnt, int n)
+double norma_L2_residuo(double *x,SL_Tridiag *sl, int n)
 {
  int tam = n;
- double *auxL2 = malloc (n * sizeof(double));
  double normaL2 = 0.0;
+ double* residuo = malloc (n * sizeof(double));
+ double* auxResiduo = malloc (n * sizeof(double));
+
+
+ residuo[0] = sl->B[0] - (sl->D[0] * x[0] + sl->Ds[0] * x[1]);
+ for (int i = 1; i < n-1; i++)
+    residuo[i] = sl->B[i] - ( (sl->Di[i] * x[i-1]) + (sl->D[i] * x[i]) + (sl->Ds[i] * x[i+1]));
+ residuo[n-1] = sl->B[n-1] - (sl->Di[n-1] * x[n-2] + sl->D[n-1] * x [n-1]); 
+ 
 
  for (int i = 0; i < tam; i++)
  {
-  auxL2[i] = x[i] - xAnt[i];
-  auxL2[i] = auxL2[i] * auxL2[i];
+  auxResiduo[i] = x[i] - residuo[i];
+  auxResiduo[i] = auxResiduo[i] * auxResiduo[i];
  }
  
- normaL2 = ABS(somaKahan(auxL2, tam));
+ normaL2 = ABS(somaKahan(auxResiduo, tam));
  normaL2 = sqrt(normaL2);
- free(auxL2);
+ free(auxResiduo);
  return normaL2; 
 }
 /*!
@@ -164,19 +189,24 @@ sl->B[edoeq->n-1] -= edoeq->yb * (1 + h*edoeq->p(edoeq->b-h)/2.0);
     \param norma retorna última normaL2 do método
     */
 void gaussSeidel (double *D, double *Di, double *Ds, 
-double *B, double *x, int n, double norma )
+double *B, double *x, int n, double*norma, SL_Tridiag* sl )
 {
     double *xAnt = calloc (n , sizeof(double));  //vetor de solucao anterior, começa nulo
     int it = 0;
-    norma = 1.0 + FLT_EPSILON;
+    *norma = 1.0 + FLT_EPSILON;
 
     //aplica método GaussSeidel
-    while (norma > FLT_EPSILON && it < MAXIT) {
+    while (*norma > FLT_EPSILON && it < MAXIT) {
     x[0] = (B[0] - Ds[0] * x[1]) / D[0];
     for (int i=1; i < n-1; ++i)
         x[i] = (B[i] - Di[i-1] * x[i-1] - Ds[i] * x[i+1]) / D[i];
     x[n-1] = (B[n-1] - Di[n-2] * x[n-2] ) / D[n-1];
-    norma = norma_L2(x, xAnt, n);
+    *norma = norma_L2_residuo(x, sl, n);
+    //printf("\n\n\n iterou  %d vezes \n\n\n", it);
+    //if (1)
+    //{
+    //    printf("norma %d eh: %16.g \n",it, *norma);
+    //}
 
     //copia vetor de solução para o vetor de solução anterior
     for (int iterator = 0; iterator < n; iterator++) 
@@ -186,4 +216,33 @@ double *B, double *x, int n, double norma )
 
     free(xAnt);
 }
+/*!
+    \brief Aplica o método de gauss seidel sem utilizar vetores 
+*/
+void gaussSeideldireto(Edo *edoeq, SL_Tridiag *sl)
+{
+    double xi, h;
+    double Ds, D, Di; // diagonais temporárias 
+    h = (edoeq->b - edoeq->a) / (edoeq->n+1.0);
+    for (int i = 0; i < edoeq->n; i++)
+    {
+        
+    }
+    
+}
 
+void gera_tri_diagonal (Edo *edoeq, SL_Tridiag *sl)
+{
+double xi, h;
+h = (edoeq->b - edoeq->a) / (edoeq->n+1.0);
+for (int i=0; i < edoeq->n; ++i) {
+xi = edoeq->a + (i+1)*h; // ponto da malha
+sl->Di[i] = 1 - h * edoeq->p(xi)/2.0; // diagonal inferior
+sl->D[i] = -2 + h*h * edoeq->q(xi); // diagonal principal
+sl->Ds[i] = 1 + h * edoeq->p(xi)/2.0; // diagonal superior
+sl->B[i] = h*h * edoeq->r(xi); // termo independente
+}
+// Condições de contorno subtraídas do 1º e último termos independentes
+sl->B[0] -= edoeq->ya * (1 - h*edoeq->p(edoeq->a+h)/2.0);
+sl->B[edoeq->n-1] -= edoeq->yb * (1 + h*edoeq->p(edoeq->b-h)/2.0);
+}

@@ -19,16 +19,16 @@ double *D, *Di, *Ds, *B;
 int n;
 } SL_Tridiag;
 
-/*********************************
- * estrutura que guarda as informações da equação diferencial ordinária específica com valores de contorno
- * n: número de pontos internos na malha
- * a: início do intervalo
- * b: final do intervalo
- * ya: condição de contorno inicial
- * yb: condição de contorno final
- * p: ponteiro de função que calcula o coeficiente que multiplica y'
- * q: coeficiente que multiplica y
- * r: ponteiro de função que calcula o coeficiente independente
+/*!
+ \param estrutura que guarda as informações da equação diferencial ordinária específica com valores de contorno
+ \param n: número de pontos internos na malha
+ \param a: início do intervalo
+ \param b: final do intervalo
+ \param ya: condição de contorno inicial
+ \param yb: condição de contorno final
+ \param p: ponteiro de função que calcula o coeficiente que multiplica y'
+ \param q: coeficiente que multiplica y
+ \param r: ponteiro de função que calcula o coeficiente independente
 */
 typedef struct {
 int n;
@@ -44,10 +44,11 @@ double calcula_r(double x);
 void inicializa_EDO( Edo* edoq, int n);
 void ajusta_n_EDO( Edo* edoq, int n);
 void imprime_EDO (Edo* edoq);
+void imprime_SL (Edo* edoq, SL_Tridiag* sl);
 
 double somaKahan( double *dados, int tam );
-double norma_L2(double *x, double *xAnt, int n);
+double norma_L2_residuo(double *x, SL_Tridiag *sl, int n);
 void aloca_tri_diagonal (Edo *edoeq, SL_Tridiag *sl);
 void gera_tri_diagonal (Edo *edoeq, SL_Tridiag *sl);
 void gaussSeidel (double *D, double *Di, double *Ds, 
-double *B, double *x, int n, double norma );
+double *B, double *x, int n, double *norma, SL_Tridiag *sl );
