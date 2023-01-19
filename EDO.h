@@ -2,9 +2,10 @@
 #include <stdlib.h>
 #include <math.h>
 #include <float.h>
+#include "auxiliar.h"
 
-// Valor absoluto de um número. Alternativa ao uso da função 'fabs()'
-#define ABS(num)  ((num) < 0.0 ? -(num) : (num))
+#define GS_COM_VETOR 1
+#define GS_SEM_VETOR 2
 
 /***********************************
  * estrutura que armazena os vetores do Sistema Linear Tridiagonal
@@ -45,10 +46,13 @@ void inicializa_EDO( Edo* edoq, int n);
 void ajusta_n_EDO( Edo* edoq, int n);
 void imprime_EDO (Edo* edoq);
 void imprime_SL (Edo* edoq, SL_Tridiag* sl);
-
+void imprime_resumo_gaussSeidel(int metodo, int n, double tempo, double norma);
 double somaKahan( double *dados, int tam );
 double norma_L2_residuo(double *x, SL_Tridiag *sl, int n);
+
 void aloca_tri_diagonal (Edo *edoeq, SL_Tridiag *sl);
+void libera_tri_diagonal (Edo *edoeq, SL_Tridiag *sl);
 void gera_tri_diagonal (Edo *edoeq, SL_Tridiag *sl);
-void gaussSeidel (double *D, double *Di, double *Ds, 
-double *B, double *x, int n, double *norma, SL_Tridiag *sl );
+void gaussSeidel_vetor (double *D, double *Di, double *Ds, 
+double *B, double *x, int n, double *norma, SL_Tridiag *sl, double *tempo);
+void gaussSeidel_direto(Edo *edoeq, SL_Tridiag *sl, double *X, double *norma, double *tempo); 

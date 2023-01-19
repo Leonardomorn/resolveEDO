@@ -1,4 +1,5 @@
 #include "EDO.h"
+
 #define MAXIT 50
 /**********************************
  * função que calcula e retorna o coeficiente p da EDO, onde p = x + 1;
@@ -73,17 +74,23 @@ void imprime_EDO (Edo* edoq)
 
 void imprime_SL (Edo* edoq, SL_Tridiag* sl)
 {
-    printf("A diagonal inferior é: \n");
-    for (int i = 0; i < edoq->n; i++)
+    printf("\n__________________________________________________________");
+    printf("\npara n = %d passos, o sistema linear é:", edoq->n);
+    printf("\n\nDiagonal inferior: \n");
+    for (int i = 1; i < edoq->n; i++)
         printf("%f " ,sl->Di[i]);
     
-    printf("\n\nA diagonal principal é: \n");
+    printf("\n\nDiagonal principal: \n");
     for (int i = 0; i < edoq->n; i++)
         printf("%f " ,sl->D[i]);
     
-    printf("\n\nA diagonal superior é: \n");
-    for (int i = 0; i < edoq->n; i++)
+    printf("\n\nDiagonal superior : \n");
+    for (int i = 0; i < edoq->n-1; i++)
         printf("%f " ,sl->Ds[i]);    
+    printf("\n\n o termo independente é: \n");
+    for (int i = 0; i < edoq->n; i++)
+        printf("%f ", sl->B[i]);
+    
     printf("\n ");    
 
 }
@@ -155,6 +162,10 @@ void aloca_tri_diagonal (Edo *edoeq, SL_Tridiag *sl)
     sl->Ds = malloc ( edoeq->n * sizeof(double));
 }
 
+void libera_tri_diagonal (Edo *edoeq, SL_Tridiag *sl)
+{
+    free (sl->B); free (sl->D); free (sl->Di); free (sl->Ds); 
+}
 /*!
   \brief algoritmo que gera a matriz Tri-diagonal 
 
@@ -178,7 +189,7 @@ sl->B[edoeq->n-1] -= edoeq->yb * (1 + h*edoeq->p(edoeq->b-h)/2.0);
 }
 
 /*!
-    \brief aplica o método de Gauss Seidel para obter a solução de um sistema tri-driagonal
+    \brief aplica o método de Gauss Seidel com vetores para obter a solução de um sistema tri-driagonal
     
     \param D vetor diagonal principal
     \param Di vetor diagonal inferior
@@ -188,61 +199,75 @@ sl->B[edoeq->n-1] -= edoeq->yb * (1 + h*edoeq->p(edoeq->b-h)/2.0);
     \param n tamanho do sistema
     \param norma retorna última normaL2 do método
     */
-void gaussSeidel (double *D, double *Di, double *Ds, 
-double *B, double *x, int n, double*norma, SL_Tridiag* sl )
+void gaussSeidel_vetor (double *D, double *Di, double *Ds, 
+double *B, double *x, int n, double*norma, SL_Tridiag* sl, double *tempo )
 {
-    double *xAnt = calloc (n , sizeof(double));  //vetor de solucao anterior, começa nulo
     int it = 0;
     *norma = 1.0 + FLT_EPSILON;
-
+    zera_vetor(x, n);
     //aplica método GaussSeidel
+    *tempo = timestamp();
     while (*norma > FLT_EPSILON && it < MAXIT) {
     x[0] = (B[0] - Ds[0] * x[1]) / D[0];
     for (int i=1; i < n-1; ++i)
         x[i] = (B[i] - Di[i-1] * x[i-1] - Ds[i] * x[i+1]) / D[i];
     x[n-1] = (B[n-1] - Di[n-2] * x[n-2] ) / D[n-1];
     *norma = norma_L2_residuo(x, sl, n);
-    //printf("\n\n\n iterou  %d vezes \n\n\n", it);
-    //if (1)
-    //{
-    //    printf("norma %d eh: %16.g \n",it, *norma);
-    //}
-
-    //copia vetor de solução para o vetor de solução anterior
-    for (int iterator = 0; iterator < n; iterator++) 
-        xAnt[iterator] = x[iterator];
     it++;
     }
+    *tempo = timestamp() - *tempo;
 
-    free(xAnt);
 }
 /*!
     \brief Aplica o método de gauss seidel sem utilizar vetores 
 */
-void gaussSeideldireto(Edo *edoeq, SL_Tridiag *sl)
+void gaussSeidel_direto(Edo *edoeq, SL_Tridiag *sl, double *X, double *norma, double *tempo)
 {
-    double xi, h;
-    double Ds, D, Di; // diagonais temporárias 
-    h = (edoeq->b - edoeq->a) / (edoeq->n+1.0);
-    for (int i = 0; i < edoeq->n; i++)
-    {
-        
-    }
     
+    int n = edoeq->n, k = 0 , i = 0;
+
+    double xi, h, yi;
+    double Ds, D, Di, B; // diagonais temporárias e termo independente temporário 
+    h = (edoeq->b - edoeq->a) / (edoeq->n+1.0);  //largura do passo da malha
+    *norma = 1.0 + FLT_EPSILON;
+    zera_vetor(X, n);
+    //aplica método GaussSeidel
+    *tempo = timestamp();
+    while (k  < MAXIT && (*norma > FLT_EPSILON))
+    {
+        for ( i = 0; i < n; ++i)
+        {
+            xi = edoeq->a + (i+1)*h; // ponto da malha
+            Di = 1 - h * edoeq->p(xi)/2.0; // diagonal inferior
+            D  = -2 + h*h * edoeq->q(xi); // diagonal principal
+            Ds = 1 + h * edoeq->p(xi)/2.0; // diagonal superior
+            B = h*h * edoeq->r(xi); // termo independente
+            if (i == 0)
+                B = B - edoeq->ya * (1 - h*edoeq->p(edoeq->a+h)/2.0); //condição de contorno inicial
+            else if (i == n-1)
+                B = B - edoeq->yb * (1 + h*edoeq->p(edoeq->b-h)/2.0); //condição de contorno final
+            else
+                B = B - (Ds * X[i+1] + Di * X[i-1]);
+            X[i] = B / D ;//calcula incógnita
+        }
+        *norma = norma_L2_residuo(X, sl, n);
+        ++k;
+    }
+    *tempo = timestamp() - *tempo;
 }
 
-void gera_tri_diagonal (Edo *edoeq, SL_Tridiag *sl)
+/*! 
+    \brief imprime o Resumo do GaussSeidel aplicado 
+*/
+void imprime_resumo_gaussSeidel(int metodo, int n, double tempo, double norma)
 {
-double xi, h;
-h = (edoeq->b - edoeq->a) / (edoeq->n+1.0);
-for (int i=0; i < edoeq->n; ++i) {
-xi = edoeq->a + (i+1)*h; // ponto da malha
-sl->Di[i] = 1 - h * edoeq->p(xi)/2.0; // diagonal inferior
-sl->D[i] = -2 + h*h * edoeq->q(xi); // diagonal principal
-sl->Ds[i] = 1 + h * edoeq->p(xi)/2.0; // diagonal superior
-sl->B[i] = h*h * edoeq->r(xi); // termo independente
-}
-// Condições de contorno subtraídas do 1º e último termos independentes
-sl->B[0] -= edoeq->ya * (1 - h*edoeq->p(edoeq->a+h)/2.0);
-sl->B[edoeq->n-1] -= edoeq->yb * (1 + h*edoeq->p(edoeq->b-h)/2.0);
+    printf("\n ****************************************************************\n");
+    if(metodo == GS_COM_VETOR)
+        printf("Gauss Seidel utilizando vetor para um número de passos N = %d:\n", n);
+    else
+        printf("Gauss Seidel SEM vetor para um número de passos N = %d:\n", n);
+    printf("Tempo de execução: %9g\n", tempo);
+    printf("normaL2: %9g\n", norma);
+    printf("\n ****************************************************************\n");
+
 }
