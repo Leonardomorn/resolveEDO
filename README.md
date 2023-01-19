@@ -13,3 +13,5 @@ O programa resolve a EDO:
 Primeiro método: Gera um sistema linear tri-diagonal com o método das diferenças finitas (MDF), sendo utilizado o método Gauss Seidel com vetores armazenar o Sistema Linear de forma a resolver o sistema linear.
 
 Segundo método: Gera um sistema linear tri-diagonal com o método das diferenças finitas (MDF), sendo utilizado o método Gauss Seidel sem vetores armazenar o Sistema Linear de forma a resolver o sistema linear. Dessa forma, os vetores eram calculados antes.
+
+Em cada um dos métodos é utilizado o número de passos do MDF como 5, 10 e 100.
